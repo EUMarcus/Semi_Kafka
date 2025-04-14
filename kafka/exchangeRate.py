@@ -1,31 +1,52 @@
 import json
-from fastapi import FastAPI
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from kafka import KafkaProducer
-from fastapi import Request
 
+
+
+# FastAPI setup
 app = FastAPI()
 
 KAFKA_URL = "localhost:9092"
-TOPIC = "ride-requests"
+TOPIC = "exchange-rate-notification"
 
-producer = KafkaProducer(bootstrap_servers=KAFKA_URL)
+producer = KafkaProducer(
+    bootstrap_servers=KAFKA_URL
+)
+
+
 templates = Jinja2Templates(directory="templates")
 
-@app.get("/", response_class=HTMLResponse)
-def display_home_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-@app.post("/")
-def request_ride(user: str, baseCurrency: str, targetCurrrency: str):
-    data = {"user": user, "baseCurrency": baseCurrency, "targetCurrrency" : targetCurrrency}
+# Handling the POST request when the user submits the form
+@app.post("/", response_class=HTMLResponse)
+async def setCurrency(
+    request: Request,
+    user: str = Form(...),
+    baseCurrency: str = Form(...)
+):
+    # Create a dictionary to hold the user-submitted data
+    data = {"user": user, "baseCurrency": baseCurrency}
     print("Base Currency Change Detected:", data)
-
-    # Send to Kafka
+    
+    # Send the data to Kafka for tracking
     producer.send(TOPIC, json.dumps(data).encode())
+    
+   
+    return templates.TemplateResponse("currency_view.html", {
+        "request": request,
+        "message": "Base Currency Changed Successfully!",
+        "user": user,
+        "base_currency": baseCurrency,
+        
+    })
 
-    return {"message": "Base Currency Changed Successfully!"}
+
+@app.get("/", response_class=HTMLResponse)
+async def getCurrencyPage(request: Request):
+    return templates.TemplateResponse("currency_view.html", {"request": request})
+
 
 if __name__ == "__main__":
     import uvicorn
