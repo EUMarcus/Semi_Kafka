@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Form, Query, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import requests, json
 from kafka import KafkaProducer
+from fastapi.templating import Jinja2Templates
+
 
 app = FastAPI()
 
@@ -18,37 +21,36 @@ producer = KafkaProducer(
 EXCHANGE_API_KEY = "9182c69d6189cb61ba450f03"
 EXCHANGE_API_URL = f"https://v6.exchangerate-api.com/v6/{EXCHANGE_API_KEY}/pair"
 
-class SearchResult(BaseModel):
-    base: str
-    target: str
-    rate: float
+templates = Jinja2Templates(directory="templates")
 
-@app.get("/search", response_model=SearchResult)
-def get_conversion_rate(
-    base: str = Query(..., min_length=3, max_length=3),
-    target: str = Query(..., min_length=3, max_length=3)
+@app.post("/", response_class=HTMLResponse)
+async def searchCurrency(
+    request: Request,
+    baseCurrency: str = Form(...),
+    targetCurrency: str = Form(...)
 ):
-    base = base.upper()
-    target = target.upper()
-    url = f"{EXCHANGE_API_URL}/{base}/{target}"
-    response = requests.get(url)
-    data = response.json()
+    # Create a dictionary to hold the user-submitted data
+    data = {"sBaseCurrency": baseCurrency,"sTargetCurrency": targetCurrency}
+    print("User searching for a specific currency", data)
+    
+    # Send the data to Kafka for tracking
+    producer.send(TOPIC, data)
+    
+   
+    return templates.TemplateResponse("currency_search.html", {
+        "request": request,
+        "message": "Search for Currency Successfull!",
+        "base_currency": baseCurrency,
+        "target_currency": targetCurrency
+        
+    })
 
-    if data["result"] != "success":
-        rate = 0.0
-    else:
-        rate = data["conversion_rate"]
 
-    # Kafka log
-    message = {
-        "base": base,
-        "target": target,
-        "rate": rate
-    }
-    producer.send(TOPIC, message)
-    producer.flush()
+@app.get("/", response_class=HTMLResponse)
+async def getSearchPage(request: Request):
+    return templates.TemplateResponse("currency_search.html", {"request": request})
 
-    return message
+
 
 
 if __name__ == "__main__":
