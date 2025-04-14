@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Conversion Rates</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+        .currency-list {
+            margin-top: 20px;
+        }
+        .currency-list table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .currency-list table, .currency-list th, .currency-list td {
+            border: 1px solid #ddd;
+        }
+        .currency-list th, .currency-list td {
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .currency-list th {
+            background-color: #f2f2f2;
+        }
+        .btn {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Currency Conversion Rates</h1>
+        
+        <!-- Form to input user info and base/target currency -->
+        <form method="POST" action="/">
+            <label for="user">Your Name:</label>
+            <input type="text" id="user" name="user" required>
+            <br><br>
+            <label for="base-currency">Base Currency:</label>
+            <input type="text" id="base-currency" name="baseCurrency" required>
+            
+            <button type="submit" class="btn">Submit</button>
+        </form>
+
+        <!-- Display success message -->
+        {% if message %}
+            <p style="color: green;">{{ message }}</p>
+        {% endif %}
+
+        <!-- Display the current base currency and target currency -->
+        <p><strong>Base Currency:</strong> <span id="base-currency-span">{{ base_currency }}</span></p>
+        
+
+        <!-- Currency conversion table (JavaScript fetches conversion rates) -->
+        <div class="currency-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Currency</th>
+                        <th>Conversion Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="currency-rates">
+                    <!-- Currency rates will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>
+        // Function to fetch conversion rates based on the base currency
+        async function fetchConversionRates(baseCurrency) {
+            const apiUrl = `https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/latest/${baseCurrency}`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                if (data.result === "success") {
+                    const rates = data.conversion_rates;
+                    const currencyRatesTable = document.getElementById('currency-rates');
+                    
+                    // Clear the table before adding new rows
+                    currencyRatesTable.innerHTML = '';
+                    
+                    // Loop through all the conversion rates and display them
+                    for (const [currency, rate] of Object.entries(rates)) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${currency}</td><td>${rate}</td>`;
+                        currencyRatesTable.appendChild(row);
+                    }
+
+                    // Update the base currency on the page
+                    document.getElementById('base-currency-span').textContent = baseCurrency;
+                } else {
+                    alert('Error fetching data: ' + data.result);
+                }
+            } catch (error) {
+                console.error('Error fetching conversion data:', error);
+            }
+        }
+
+        // Call the fetchConversionRates function when the page loads
+        fetchConversionRates('{{ base_currency }}');  // Use dynamic base currency from template
+        
+        
+
+    </script>
+
+</body>
+</html>
