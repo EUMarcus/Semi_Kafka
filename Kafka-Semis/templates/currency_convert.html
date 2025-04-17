@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert with Live Rates</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+        .currency-list {
+            margin-top: 20px;
+        }
+        .currency-list table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .currency-list table, .currency-list th, .currency-list td {
+            border: 1px solid #ddd;
+        }
+        .currency-list th, .currency-list td {
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .currency-list th {
+            background-color: #f2f2f2;
+        }
+        .btn {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Search For Specific Currency Conversion Rates</h1>
+
+        <form method="POST" action="/convertCurrency">
+            <label for="amount">Amount to be Converted:</label>
+            <input type="text" id="amount" name="baseAmount" required>
+            <br>
+            <label for="base-currency">Base Currency:</label>
+            <input type="text" id="base-currency" name="baseCurrency" required>
+            <label for="target-currency">Target Currency:</label>
+            <input type="text" id="target-currency" name="targetCurrency" required>
+            
+            <button type="submit" class="btn">Submit</button>
+        </form>
+
+        {% if message %}
+            <p style="color: green;">{{ message }}</p>
+        {% endif %}
+
+
+        <p><strong>Base Currency:</strong> <span id="base-currency-span">{{ base_currency }}</span></p>
+        <p><strong>Target Currency:</strong> <span id="target-currency-span">{{ target_currency }}</span></p>
+
+        <div class="currency-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Base Currency</th>
+                        <th>Target Currency</th>
+                        <th>Base Amount</th>
+                        <th>Conversion Rate</th>
+                        <th>Converted Rate</th>
+                    </tr>
+                </thead>
+                <tbody id="currency-rates"></tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script>   
+        async function fetchConversionRates(baseCurrency, targetCurrency, amount) {
+            const apiUrl = `https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/pair/${baseCurrency}/${targetCurrency}/${amount}`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                if (data.result === "success") {
+                    const currencyRatesTable = document.getElementById('currency-rates');
+                    
+                    
+                    currencyRatesTable.innerHTML = '';
+                    
+                    
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${data.base_code}</td><td>${data.target_code}</td><td>${amount}</td><td>${data.conversion_rate}</td><td>${data.conversion_result}</td>`;
+                    currencyRatesTable.appendChild(row);
+                
+
+                    
+                    document.getElementById('base-currency-span').textContent = baseCurrency;
+                } else {
+                    alert('Error fetching data: ' + data.result);
+                }
+            } catch (error) {
+                console.error('Error fetching conversion data:', error);
+            }
+        }
+
+      
+        fetchConversionRates('{{ base_currency }}', '{{ target_currency}}', '{{base_amount}}');  
+    </script>
+
+</body>
+</html>
