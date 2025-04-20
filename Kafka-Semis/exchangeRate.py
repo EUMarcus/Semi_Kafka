@@ -1,8 +1,10 @@
 import json
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from kafka import KafkaProducer
+from tinydb import TinyDB, Query
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
@@ -15,7 +17,9 @@ producer = KafkaProducer(
 
 
 templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name='static')
 
+userLoggedIn = ""
 
 @app.post("/viewCurrency", response_class=HTMLResponse)
 async def setCurrency(
@@ -25,6 +29,7 @@ async def setCurrency(
 ):
   
     data = {"user": user, "baseCurrency": baseCurrency}
+    print(userLoggedIn)
     print("Base Currency Change Detected:", data)
     
 
@@ -97,10 +102,97 @@ async def searchCurrency(
 async def getSearchPage(request: Request):
     return templates.TemplateResponse("currency_convert.html", {"request": request})
 
-@app.get("/", response_class=HTMLResponse)
+
+@app.get("/home", response_class=HTMLResponse)
 async def getCurrencyPage(request: Request):
     return templates.TemplateResponse("currency_landing.html", {"request": request})
 
+
+@app.get("/", response_class=HTMLResponse)
+async def getCurrencyPage(request: Request):
+    return templates.TemplateResponse("currency_mainpage.html", {"request": request})
+
+
+
+
+
+
+
+
+
+
+
+
+# Users Side
+
+userDB = TinyDB('users.json')
+users = userDB.table('users')
+User = Query()
+
+def signup(username, password):
+    if users.search(User.username == username):
+        return False
+    users.insert({'username': username, 'password': password})
+    return True
+
+def login(username, password):
+    user = users.get(User.username == username)
+    if user and user['password'] == password:
+        return True
+    return False
+
+@app.get("/currencySignup", response_class=HTMLResponse)
+async def getCurrencyPage(request: Request):
+    return templates.TemplateResponse("currency_signup.html", {"request": request})
+
+@app.post("/currencySignup", response_class=HTMLResponse)
+async def getUserCreds(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...)
+):
+    response = signup(username, password)
+    if response:
+        data = {"username": username,"email": email,"password": password}
+        print("New user added! Welcome", username)
+        
+        # ala pa papagsendan na topic
+        # producer.send(TOPIC, json.dumps(data).encode())
+
+        return RedirectResponse(url="/currencyLogin", status_code=303)
+
+    else:
+        print("Username already taken")
+        return templates.TemplateResponse("currency_error.html", {"request": request})
+
+@app.get("/currencyLogin", response_class=HTMLResponse)
+async def getCurrencyPage(request: Request):
+    return templates.TemplateResponse("currency_login.html", {"request": request})
+
+@app.post("/currencyLogin", response_class=HTMLResponse)
+async def loginUser(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    
+    response = login(username, password)
+    
+    if response:
+        data = {"newUser": username}
+        print("User Logged In, Welcome", username,"!")
+        
+        producer.send(TOPIC, json.dumps(data).encode())
+        global userLoggedIn
+        userLoggedIn = username
+        
+        return RedirectResponse(url="/home",status_code=303)
+    else:
+        print("Invalid login credentials.")
+    
+
+        return templates.TemplateResponse("currency_error.html", {"request": request})
 
 if __name__ == "__main__":
     import uvicorn

@@ -2,44 +2,26 @@
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Kafka Producers Hub</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding-top: 50px;
-                background-color: #f2f2f2;
-            }
-            .container {
-                display: inline-block;
-                padding: 20px;
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            h1 {
-                color: #333;
-            }
-            a {
-                display: block;
-                margin: 10px 0;
-                padding: 10px 20px;
-                background-color: #4CAF50;
-                color: white;
-                text-decoration: none;
-                border-radius: 5px;
-            }
-            a:hover {
-                background-color: #45a049;
-            }
-        </style>
+        <title>curEx</title>
+        <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
     </head>
-    <body>
-        <div class="container">
-            <h1>Kafka Producers Hub</h1>
-            <a href="http://localhost:5000/viewCurrency">Currency View Form</a>
-            <a href="http://localhost:5000/searchCurrency">Currency Search Form</a>
-            <a href="http://localhost:5000/convertCurrency">Currency Conversion</a>
+    <body> <br><br><br><br>
+        <div class="container" style="width: 500px;">
+            <h1>💷 curEx</h1>
+            <div style="display: flex; flex-direction: column; row-gap: 1rem; align-items: center; width: 300px; margin: 0 auto;">
+                <a class="btn" href="http://localhost:5000/viewCurrency">Currency View Form</a> 
+                <a class="btn" href="http://localhost:5000/searchCurrency" >Currency Search Form</a> 
+                <a class="btn" href="http://localhost:5000/convertCurrency" >Currency Conversion</a> 
+                <a class="btn" href="http://localhost:5000/currencyLogin">Logout</a>
+            </div>
+            <br><br>
+            
+            
+            
+            
         </div>
     </body>
     </html>

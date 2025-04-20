@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Currency Exchange Rate</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+
+
+    <style>
+        td {
+            font-family: 'Consolas';
+            padding-left: 100px;
+            padding-top: 20px;
+        }
+    </style>
+
+<script>
+    function reloadPage() {
+        location.reload(); 
+    }
+</script>
+</head>
+<body>
+    <br><br>
+
+    <div class="container">
+        
+        <div>
+            <h1 style="text-align: center;">Exchange Activity Monitor</h1>
+        </div>
+
+        <div style="align-items: center; justify-content: center; display: flex; margin: 20px;">
+            <button class="btn" onclick="reloadPage()">Reload Page</button>
+        </div>
+
+        <div style="display: flex; justify-content: center; width: 100%;">
+            
+            <table class="notif">
+                <thead>
+                    <th colspan="2">Recent Currency Activity</th>
+                </thead>
+                <tbody id="currency-rates">
+                    {% for data in exchange_data_list %}
+                        <tr>
+                            
+                            {% if data.user %}
+                                <td id="notif">Changes in Base</td>
+                                <td id="notif"> User: {{ data.user }} <br>Currency: {{ data.base }}</td>
+                            {% else %}
+                                <br>
+                            {% endif %}
+                            
+                            {% if data.sTarget %}
+                                <td id="notif">Conversion Request</td>
+                                <td id="notif">Target: {{ data.sTarget }} <br> Base: {{ data.sBase }}</td>
+                            {% else %}
+                                <br>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                
+            </table>
+
+        </div>        
+
+    </div>
+</body>
+</html>

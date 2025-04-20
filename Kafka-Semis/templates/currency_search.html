@@ -4,48 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Conversion Rates</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            background-color: #f9f9f9;
-        }
-        .currency-list {
-            margin-top: 20px;
-        }
-        .currency-list table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .currency-list table, .currency-list th, .currency-list td {
-            border: 1px solid #ddd;
-        }
-        .currency-list th, .currency-list td {
-            padding: 8px 12px;
-            text-align: left;
-        }
-        .currency-list th {
-            background-color: #f2f2f2;
-        }
-        .btn {
-            padding: 10px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .btn:hover {
-            background-color: #45a049;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
 </head>
 <body>
 
@@ -55,10 +16,16 @@
         <!-- Form to input user info and base/target currency -->
         <form method="POST" action="/searchCurrency">
             <label for="base-currency">Base Currency:</label>
-            <input type="text" id="base-currency" name="baseCurrency" required>
+            <!-- <input type="text" id="base-currency" name="baseCurrency" required> -->
+             <select name="baseCurrency" id="base-currency">
+                <option value=""  disabled selected>Select a base currency</option>
+             </select>
+
             <label for="target-currency">Target Currency:</label>
-            <input type="text" id="target-currency" name="targetCurrency" required>
-            
+            <!-- <input type="text" id="target-currency" name="targetCurrency" required> -->
+             <select name="targetCurrency" id="target-currency">
+                <option value="" disabled selected>Select a target currency</option>
+             </select>
             <button type="submit" class="btn">Submit</button>
         </form>
 
@@ -68,8 +35,8 @@
         {% endif %}
 
         <!-- Display the current base currency and target currency -->
-        <p><strong>Base Currency:</strong> <span id="base-currency-span">{{ base_currency }}</span></p>
-        <p><strong>Target Currency:</strong> <span id="target-currency-span">{{ target_currency }}</span></p>
+        <p><strong>Base Currency:</strong> <span id="base-currency-spans" style="color: blue;">{{ base_currency }}</span></p>
+        <p><strong>Target Currency:</strong> <span id="target-currency-span" style="color: blue;">{{ target_currency }}</span></p>
 
         <!-- Currency conversion table (JavaScript fetches conversion rates) -->
         <div class="currency-list">
@@ -88,7 +55,7 @@
         </div>
 
     </div>
-
+<!-- 
     <script>
         
         async function fetchConversionRates(baseCurrency, targetCurrency) {
@@ -122,6 +89,67 @@
 
         // Call the fetchConversionRates function when the page loads
         fetchConversionRates('{{ base_currency }}', '{{ target_currency}}');  // Use dynamic base currency from template
+    </script> -->
+
+    <script>
+        // Fetch and populate both dropdowns
+        async function populateCurrencyDropdowns(selectedBase, selectedTarget) {
+            const apiUrl = `https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/latest/USD`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                if (data.result === "success") {
+                    const rates = data.conversion_rates;
+                    const baseSelect = document.getElementById('base-currency');
+                    const targetSelect = document.getElementById('target-currency');
+
+                    baseSelect.innerHTML = targetSelect.innerHTML = '';  // Clear options
+
+                    Object.keys(rates).forEach(currency => {
+                        const baseOption = new Option(currency, currency, currency === selectedBase, currency === selectedBase);
+                        const targetOption = new Option(currency, currency, currency === selectedTarget, currency === selectedTarget);
+                        baseSelect.add(baseOption);
+                        targetSelect.add(targetOption);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading currencies:', error);
+            }
+        }
+
+        // Fetch conversion rate between base and target
+        async function fetchConversionRates(baseCurrency, targetCurrency) {
+            const apiUrl = `https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/pair/${baseCurrency}/${targetCurrency}`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                if (data.result === "success") {
+                    const { base_code, target_code, conversion_rate } = data;
+                    document.getElementById('currency-rates').innerHTML = 
+                        `<tr><td>${base_code}</td><td>${target_code}</td><td>${conversion_rate}</td></tr>`;
+                    document.getElementById('base-currency-span').textContent = base_code;
+                    document.getElementById('target-currency-span').textContent = target_code;
+                }
+            } catch (error) {
+                console.error('Error fetching rate:', error);
+            }
+        }
+
+        // Initialize and populate dropdowns on page load
+        const defaultBase = '{{ base_currency }}' || 'PHP';
+        const defaultTarget = '{{ target_currency }}' || 'USD';
+        populateCurrencyDropdowns(defaultBase, defaultTarget);
+        fetchConversionRates(defaultBase, defaultTarget);
+
+        // Update conversion rates when selection changes
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('base-currency').addEventListener('change', () => {
+                fetchConversionRates(event.target.value, document.getElementById('target-currency').value);
+            });
+            document.getElementById('target-currency').addEventListener('change', () => {
+                fetchConversionRates(document.getElementById('base-currency').value, event.target.value);
+            });
+        });
     </script>
 
 </body>
