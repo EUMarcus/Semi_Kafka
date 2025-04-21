@@ -1,5 +1,5 @@
 import json, requests
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from kafka import KafkaProducer, KafkaConsumer
@@ -11,15 +11,13 @@ app = FastAPI()
 KAFKA_URL = "localhost:9092"
 TOPIC = "exchange-rate-activity"
 TOPIC_2 = "money-transfer-records"
+TOPIC_3 = "user-data-records"
 
 producer = KafkaProducer(
     bootstrap_servers=KAFKA_URL
 )
 
-# profile_consumer = KafkaConsumer(
-#     TOPIC_2,
-#     bootstrap_servers = KAFKA_URL
-# )
+
 
 
 templates = Jinja2Templates(directory="templates")
@@ -55,7 +53,7 @@ async def getCurrencyPage(request: Request):
     global userLoggedIn
     return templates.TemplateResponse("currency_view.html", {
         "request": request,
-        "welcome_message": f"Hello {userLoggedIn}! Welcome to curEx, your one stop shop for your currency exchanging needs!"
+        "welcome_message": f"Hello {userLoggedIn}!Welcome to curEx, your one stop shop for your currency exchanging needs!"
         })
 
 @app.post("/searchCurrency", response_class=HTMLResponse)
@@ -64,6 +62,7 @@ async def searchCurrency(
     baseCurrency: str = Form(...),
     targetCurrency: str = Form(...)
 ):
+
     # Create a dictionary to hold the user-submitted data
     data = {"sBaseCurrency": baseCurrency,"sTargetCurrency": targetCurrency}
     print("User searching for a specific currency", data)
@@ -87,14 +86,28 @@ async def getSearchPage(request: Request):
 
 
 @app.post("/convertCurrency", response_class=HTMLResponse)
-async def searchCurrency(
+async def convertCurrency(
     request: Request,
     baseCurrency: str = Form(...),
     targetCurrency: str = Form(...),
-    baseAmount: int = Form(...)
+    baseAmount: str = Form(...)
 ):
-    data = {"sBaseCurrency": baseCurrency,"sTargetCurrency": targetCurrency,"amount": baseAmount}
-    print("User is converting",baseAmount, baseCurrency, "into", targetCurrency)
+
+    try:
+        bamount = float(baseAmount)
+    except:
+        print("Base amount must be a valid float.")
+        return templates.TemplateResponse ("currency_error.html",{"request": request})
+    if bamount <= 0:
+        print("Base amount must be a positive integer greater than zero.")
+        return templates.TemplateResponse ("currency_error.html",{"request": request})
+
+
+            
+        
+
+    data = {"sBaseCurrency": baseCurrency,"sTargetCurrency": targetCurrency,"amount": bamount}
+    print("User is converting",bamount, baseCurrency, "into", targetCurrency)
     
     producer.send(TOPIC, json.dumps(data).encode())
     
@@ -104,7 +117,7 @@ async def searchCurrency(
         "message": "Search for Currency Successfull!",
         "base_currency": baseCurrency,
         "target_currency": targetCurrency,
-        "base_amount": baseAmount
+        "base_amount": bamount
     })
 
 
@@ -299,11 +312,11 @@ async def getUserCreds(
 ):
     response = signup(username, email, password, balance, baseCurrency)
     if response:
-        data = {"username": username,"email": email,"password": password}
+        data = {"username": username}
         print("New user added! Welcome", username)
         
-        # ala pa papagsendan na topic
-        # producer.send(TOPIC, json.dumps(data).encode())
+
+        producer.send(TOPIC_3, json.dumps(data).encode())
 
         return RedirectResponse(url="/currencyLogin", status_code=303)
 

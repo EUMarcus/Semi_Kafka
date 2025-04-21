@@ -1,1 +1,1 @@
-{"balance": {"2": {"username": "Marcus", "balance": 40713.799646, "currency": "PHP", "notification": "ma sent you 50.0 USD (2836.995 PHP)"}, "1": {"username": "ma", "balance": 300.0000000000001, "currency": "USD"}}}
+{"balance": {"1": {"username": "ma", "balance": 1000.0, "currency": "USD"}, "2": {"username": "Marcus", "balance": 1000.0, "currency": "PHP"}}}

@@ -1,10 +1,8 @@
 import json
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+
 from kafka import KafkaConsumer
-from datetime import datetime
-from fastapi.staticfiles import StaticFiles
+
 from tinydb import TinyDB, Query
 
 app = FastAPI()

@@ -18,9 +18,13 @@
             <input type="text" id="amount" name="baseAmount" required>
             <br>
             <label for="base-currency">Base Currency:</label>
-            <input type="text" id="base-currency" name="baseCurrency" required>
+            <select name="baseCurrency" id="base-currency">
+                <option value="">Loading Currencies</option>
+            </select>
             <label for="target-currency">Target Currency:</label>
-            <input type="text" id="target-currency" name="targetCurrency" required>
+            <select name="targetCurrency" id="target-currency">
+                <option value="">Loading Currencies</option>
+            </select>
             
             <button type="submit" class="btn">Submit</button>
         </form>
@@ -53,25 +57,55 @@
     <script>   
         async function fetchConversionRates(baseCurrency, targetCurrency, amount) {
             const apiUrl = `https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/pair/${baseCurrency}/${targetCurrency}/${amount}`;
+            const apiUrl_drop = `https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/latest/${baseCurrency}`;
+
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
-                
+                const dropresponse = await fetch(apiUrl_drop);
+
+                const data_2 = await dropresponse.json();
+                const rates = data_2.conversion_rates;
                 if (data.result === "success") {
                     const currencyRatesTable = document.getElementById('currency-rates');
                     
                     
                     currencyRatesTable.innerHTML = '';
                     
-                    
-                    
                     const row = document.createElement('tr');
                     row.innerHTML = `<td>${data.base_code}</td><td>${data.target_code}</td><td>${amount}</td><td>${data.conversion_rate}</td><td>${data.conversion_result}</td>`;
                     currencyRatesTable.appendChild(row);
-                
-
                     
                     document.getElementById('base-currency-span').textContent = baseCurrency;
+
+                    const bdropdown = document.getElementById('base-currency');
+                    if (bdropdown && bdropdown.options.length <= 1) {
+                        bdropdown.innerHTML = ''; // Clear existing
+                        for (const currency in rates) {
+                            const option = document.createElement('option');
+                            option.value = currency;
+                            option.textContent = currency;
+                            if (currency === baseCurrency) {
+                                option.selected = true;
+                            }
+                            bdropdown.appendChild(option);
+                        }
+                    }
+
+                    const tdropdown = document.getElementById('target-currency');
+                    if (tdropdown && tdropdown.options.length <= 1) {
+                        tdropdown.innerHTML = ''; // Clear existing
+                        for (const currency in rates) {
+                            const option = document.createElement('option');
+                            option.value = currency;
+                            option.textContent = currency;
+                            if (currency === baseCurrency) {
+                                option.selected = true;
+                            }
+                            tdropdown.appendChild(option);
+                        }
+                    }
+
                 } else {
                     alert('Error fetching data: ' + data.result);
                 }
@@ -80,8 +114,11 @@
             }
         }
 
-      
-        fetchConversionRates('{{ base_currency }}', '{{ target_currency}}', '{{base_amount}}');  
+        const defaultBaseCurrency = '{{ base_currency }}' || 'USD';
+        const defaultTargetCurrency = '{{ target_currency }}' || 'PHP';
+        const defaultAmountCurrency = '{{ base_amount }}' || '0';
+        fetchConversionRates(defaultBaseCurrency, defaultTargetCurrency, defaultAmountCurrency);
+        
     </script>
 
 </body>
