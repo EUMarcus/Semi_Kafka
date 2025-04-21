@@ -11,14 +11,14 @@
     
 </head>
 <body>
+    <div class="container">
+        <h1>Username: {{username}}</h1>
+        <h1>Email: {{email}}</h1>
+        <h1>Password: {{password}}</h1>
+        <h1>Balance: {{balance | round(2)}}</h1>
+        <h1>Currency: {{currency}}</h1>
 
-    <h1>Username: {{username}}</h1>
-    <h1>Email: {{email}}</h1>
-    <h1>Password: {{password}}</h1>
-    <h1>Balance: {{balance | round(2)}}</h1>
-    <h1>Currency: {{currency}}</h1>
-
-    {% if notification %}
+        {% if notification %}
         <script>
             alert("{{ notification }}");
         </script>
@@ -28,7 +28,12 @@
     <form method="POST" action="/viewProfile" onsubmit="return confirmSubmit();">
         {% if message %}
             <p style="color: green;">{{ message }}</p>
+
+        {% elif error %}
+            <p style="color: red;">{{ error }}</p>
+        
         {% endif %}
+
         <label for="userSent">Enter user you want to send money to:</label>
         <input type="text" id="userSent" name="userSent" required>
         <br><br>
@@ -37,9 +42,13 @@
        
         <button  class="btn" type="submit" >Submit</button>
     </form>
+    </div>
+    
+
+    
     <script>
         function confirmSubmit() {
-            alert("Money Successfully Transfered");  
+            alert("Money Transfer in Progress . . .");  
             return true; 
         }
     </script>

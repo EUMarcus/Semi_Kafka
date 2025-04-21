@@ -16,11 +16,12 @@
         <h1>Currency Conversion Rates</h1>
 
         <form method="POST" action="/viewCurrency">
-            <label for="user">Enter your name:</label>
-            <input type="text" id="user" name="user" required>
-            <br><br>
+            {% if welcome_message %}
+                <h2 style="color: green;">{{ welcome_message }}</h2>
+            {% endif %}
+
+            
             <label for="base-currency">Enter base currency:</label>
-            <!-- <input type="text" id="base-currency" name="baseCurrency" required> -->
             <select name="baseCurrency" id="base-currency">
                 <option value="">Loading Currencies</option>
             </select>

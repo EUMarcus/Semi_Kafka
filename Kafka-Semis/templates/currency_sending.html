@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -18,7 +18,7 @@
 
 <script>
     function reloadPage() {
-        location.reload(); 
+        location.reload();
     }
 </script>
 </head>
@@ -28,7 +28,7 @@
     <div class="container">
         
         <div>
-            <h1 style="text-align: center;">Exchange Activity Monitor</h1>
+            <h1 style="text-align: center;">Money Exhanging Monitor</h1>
         </div>
 
         <div style="align-items: center; justify-content: center; display: flex; margin: 20px;">
@@ -39,25 +39,19 @@
             
             <table class="notif">
                 <thead>
-                    <th colspan="2">Recent Currency Activity</th>
+                    <th colspan="3">Recent Money Transfers</th>
                 </thead>
                 <tbody id="currency-rates">
-                    {% for data in exchange_data_list %}
+                    {% for data in transfer_data_list %}
                         <tr>
-                            
                             {% if data.user %}
-                                <td id="notif">Changes in Base</td>
-                                <td id="notif"> User: {{ data.user }} <br>Currency: {{ data.base }}</td>
+                                <td id="notif">Money Transfer Log</td>
+                                <td id="notif"> Sending User: {{ data.user }} <br> Sent Amount: {{data.amount}} <br> Currency: {{ data.userCurrency }} </td>
+                                <td id="notif"> Receiving User: {{ data.receiver }} <br> Received Amount: {{data.convertedAmount}} <br> Currency: {{ data.receiverCurrency }} </td>
                             {% else %}
                                 <br>
                             {% endif %}
                             
-                            {% if data.sTarget %}
-                                <td id="notif">Conversion Request</td>
-                                <td id="notif">Target: {{ data.sTarget }} <br> Base: {{ data.sBase }}</td>
-                            {% else %}
-                                <br>
-                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -68,4 +62,4 @@
 
     </div>
 </body>
-</html> -->
+</html>

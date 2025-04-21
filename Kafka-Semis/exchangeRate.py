@@ -10,7 +10,7 @@ app = FastAPI()
 
 KAFKA_URL = "localhost:9092"
 TOPIC = "exchange-rate-activity"
-TOPIC_2 = "profile-information"
+TOPIC_2 = "money-transfer-records"
 
 producer = KafkaProducer(
     bootstrap_servers=KAFKA_URL
@@ -31,11 +31,10 @@ userInfo = {}
 @app.post("/viewCurrency", response_class=HTMLResponse)
 async def setCurrency(
     request: Request,
-    user: str = Form(...),
     baseCurrency: str = Form(...)
 ):
-  
-    data = {"user": user, "baseCurrency": baseCurrency}
+    global userLoggedIn
+    data = {"user": userLoggedIn, "baseCurrency": baseCurrency}
     print(userLoggedIn)
     print("Base Currency Change Detected:", data)
     
@@ -46,14 +45,18 @@ async def setCurrency(
     return templates.TemplateResponse("currency_view.html", {
         "request": request,
         "message": "Base Currency Changed Successfully!",
-        "user": user,
+        "user": userLoggedIn,
         "base_currency": baseCurrency,
         
     })
 
 @app.get("/viewCurrency", response_class=HTMLResponse)
 async def getCurrencyPage(request: Request):
-    return templates.TemplateResponse("currency_view.html", {"request": request})
+    global userLoggedIn
+    return templates.TemplateResponse("currency_view.html", {
+        "request": request,
+        "welcome_message": f"Hello {userLoggedIn}! Welcome to curEx, your one stop shop for your currency exchanging needs!"
+        })
 
 @app.post("/searchCurrency", response_class=HTMLResponse)
 async def searchCurrency(
@@ -147,57 +150,106 @@ async def getProfilePage(request: Request):
             balances.insert(amount)
         del userInfo['notification'] 
 
-    return templates.TemplateResponse("currency_profileView.html", data)
-
+    return templates.TemplateResponse("currency_profileView.html", data)        
 
 @app.post("/viewProfile", response_class=HTMLResponse)
 async def sendMoney(
     request: Request,
     userSent: str = Form(...),
     sentAmount: float = Form(...)
-    ):
+):
     global userInfo
 
-    if userSent == userInfo['username']:
-        return HTMLResponse("User cannot be your own account", status_code=400)
+    request_for_tempalate = {
+        "request": request,
+        "username": userInfo['username'],
+        "email": userInfo['email'],
+        "balance": userInfo['balance'],
+        "currency": userInfo['currency'],
+    }
+
     receiver_data = balances.get(Balance.username == userSent)
-    if not receiver_data:
-        return HTMLResponse("Receiver not valid.", status_code=404)
+    
+    if userSent == userInfo['username']:
+        request_for_tempalate['error'] = "You cannot send money to your own account."
+        return templates.TemplateResponse("currency_profileView.html", request_for_tempalate)
+    elif sentAmount <= 0:
+        request_for_tempalate['error'] = "Amount must be greater than 0."
+        return templates.TemplateResponse("currency_profileView.html", request_for_tempalate)
+    elif not receiver_data:
+        request_for_tempalate['error'] = "Receiver not found."
+        return templates.TemplateResponse("currency_profileView.html", request_for_tempalate)
+    elif sentAmount > userInfo['balance']:
+        request_for_tempalate['error'] = "Insufficient balance."
+        return templates.TemplateResponse("currency_profileView.html", request_for_tempalate)
+    else:
+    # Proceed with conversion and update
+        baseCurrency = userInfo['currency']
+        targetCurrency = receiver_data['currency']
+        EXCHANGE_API_KEY = "9182c69d6189cb61ba450f03"
+        apiUrl = f"https://v6.exchangerate-api.com/v6/{EXCHANGE_API_KEY}/pair/{baseCurrency}/{targetCurrency}/{sentAmount}"
 
-    baseCurrency = userInfo['currency']
-    targetCurrency = receiver_data['currency']
+        try:
+            response = requests.get(apiUrl)
+            data = response.json()
 
-    if sentAmount <= userInfo['balance']:
-        newAmount = userInfo['balance'] - sentAmount
-        userInfo['balance'] = newAmount
+            if data.get('result') != "success":
+                return templates.TemplateResponse("currency_profileView.html", {
+                    "request": request,
+                    "username": userInfo['username'],
+                    "email": userInfo['email'],
+                    "balance": userInfo['balance'],
+                    "currency": userInfo['currency'],
+                    "error": "Currency conversion failed."
+                })
 
-        users.update({"balance": newAmount}, User.username == userInfo['username'])
+            converted_Sent = data['conversion_result']
 
-        apiUrl = f"https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/pair/{baseCurrency}/{targetCurrency}/{sentAmount}"
-        response = requests.get(apiUrl)
-        data = response.json()
-        print(data['conversion_result'])
-        if data['result'] != "success":
-            return HTMLResponse("Conversion failed.", status_code=500)
+            # # Update sender balance
+            # userInfo['balance'] -= sentAmount
+            # balances.update({"balance": userInfo['balance']}, User.username == userInfo['username'])
 
-        converted_Sent = data['conversion_result']
-        new_Balance = receiver_data['balance'] + converted_Sent
+            # # Update receiver balance
+            # new_Balance = receiver_data['balance'] + converted_Sent
+            # balances.update({"balance": new_Balance}, Balance.username == userSent)
 
-        balances.update({"balance": new_Balance}, Balance.username == userSent)
-        balances.update({"notification": f"{userInfo['username']} has sent you {sentAmount} in {baseCurrency}. Which is {data['conversion_result']} when converted to your currency."}, User.username == userSent)
-        return templates.TemplateResponse("currency_profileView.html", {
-            "request": request,
-            "username": userInfo['username'],
-            "email": userInfo['email'],
-            "password": userInfo['password'],
-            "balance": userInfo['balance'],
-            "currency": userInfo['currency'],
-            "message": f"Successfully sent {sentAmount} {baseCurrency} to {userSent}"
-        })
+            # Add notification to receiver
+            balances.update({
+                "notification": f"{userInfo['username']} sent you {sentAmount} {baseCurrency} ({converted_Sent} {targetCurrency})"
+            }, Balance.username == userSent)
 
-    return HTMLResponse("Insufficient balance.", status_code=400)
-        
+            transfer_data =  {
+                "userSender": userInfo['username'],
+                "userReceiver": userSent,
+                "sentAmount": sentAmount,
+                "converted_amount": converted_Sent
+            }
 
+            producer.send(TOPIC_2, json.dumps(transfer_data).encode())
+
+            return templates.TemplateResponse("currency_profileView.html", {
+                "request": request,
+                "username": userInfo['username'],
+                "email": userInfo['email'],
+                "password": userInfo['password'],
+                "balance": userInfo['balance'],
+                "currency": userInfo['currency'],
+                "message": f"Successfully sent {sentAmount} {baseCurrency} to {userSent}."
+            })
+
+
+
+
+        except Exception as e:
+            print("Transfer Error:", e)
+            return templates.TemplateResponse("currency_profileView.html", {
+                "request": request,
+                "username": userInfo['username'],
+                "email": userInfo['email'],
+                "balance": userInfo['balance'],
+                "currency": userInfo['currency'],
+                "error": "Something went wrong during the transfer."
+            })
 
 
 
@@ -291,7 +343,7 @@ async def loginUser(
         
         merged_data = {**user_data, **financial_data}
         
-        producer.send(TOPIC_2, json.dumps(merged_data).encode())
+        
         producer.send(TOPIC, json.dumps(data).encode())
         
 
