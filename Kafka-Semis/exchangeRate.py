@@ -1,8 +1,8 @@
-import json
+import json, requests
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from kafka import KafkaProducer
+from kafka import KafkaProducer, KafkaConsumer
 from tinydb import TinyDB, Query
 from fastapi.staticfiles import StaticFiles
 
@@ -10,16 +10,23 @@ app = FastAPI()
 
 KAFKA_URL = "localhost:9092"
 TOPIC = "exchange-rate-activity"
+TOPIC_2 = "profile-information"
 
 producer = KafkaProducer(
     bootstrap_servers=KAFKA_URL
 )
+
+# profile_consumer = KafkaConsumer(
+#     TOPIC_2,
+#     bootstrap_servers = KAFKA_URL
+# )
 
 
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name='static')
 
 userLoggedIn = ""
+userInfo = {}
 
 @app.post("/viewCurrency", response_class=HTMLResponse)
 async def setCurrency(
@@ -116,6 +123,84 @@ async def getCurrencyPage(request: Request):
 
 
 
+# Profile View
+@app.get("/viewProfile", response_class=HTMLResponse)
+async def getProfilePage(request: Request):
+    global userInfo
+
+    data = {
+    "request": request,
+    "username": userInfo['username'],
+    "email": userInfo['email'],
+    "password": userInfo['password'],
+    "balance": userInfo['balance'],
+    "currency": userInfo['currency'],
+}
+
+    if 'notification' in userInfo and userInfo['notification']:
+        data["notification"] = userInfo["notification"]
+
+        amount = balances.get(Balance.username == userInfo['username'])
+        if amount and 'notification' in amount:
+            del amount['notification']
+            balances.remove(Balance.username == userInfo['username'])
+            balances.insert(amount)
+        del userInfo['notification'] 
+
+    return templates.TemplateResponse("currency_profileView.html", data)
+
+
+@app.post("/viewProfile", response_class=HTMLResponse)
+async def sendMoney(
+    request: Request,
+    userSent: str = Form(...),
+    sentAmount: float = Form(...)
+    ):
+    global userInfo
+
+    if userSent == userInfo['username']:
+        return HTMLResponse("User cannot be your own account", status_code=400)
+    receiver_data = balances.get(Balance.username == userSent)
+    if not receiver_data:
+        return HTMLResponse("Receiver not valid.", status_code=404)
+
+    baseCurrency = userInfo['currency']
+    targetCurrency = receiver_data['currency']
+
+    if sentAmount <= userInfo['balance']:
+        newAmount = userInfo['balance'] - sentAmount
+        userInfo['balance'] = newAmount
+
+        users.update({"balance": newAmount}, User.username == userInfo['username'])
+
+        apiUrl = f"https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/pair/{baseCurrency}/{targetCurrency}/{sentAmount}"
+        response = requests.get(apiUrl)
+        data = response.json()
+        print(data['conversion_result'])
+        if data['result'] != "success":
+            return HTMLResponse("Conversion failed.", status_code=500)
+
+        converted_Sent = data['conversion_result']
+        new_Balance = receiver_data['balance'] + converted_Sent
+
+        balances.update({"balance": new_Balance}, Balance.username == userSent)
+        balances.update({"notification": f"{userInfo['username']} has sent you {sentAmount} in {baseCurrency}. Which is {data['conversion_result']} when converted to your currency."}, User.username == userSent)
+        return templates.TemplateResponse("currency_profileView.html", {
+            "request": request,
+            "username": userInfo['username'],
+            "email": userInfo['email'],
+            "password": userInfo['password'],
+            "balance": userInfo['balance'],
+            "currency": userInfo['currency'],
+            "message": f"Successfully sent {sentAmount} {baseCurrency} to {userSent}"
+        })
+
+    return HTMLResponse("Insufficient balance.", status_code=400)
+        
+
+
+
+
 
 
 
@@ -129,10 +214,16 @@ userDB = TinyDB('users.json')
 users = userDB.table('users')
 User = Query()
 
-def signup(username, password):
-    if users.search(User.username == username):
+
+balanceDB = TinyDB('balance.json')
+balances = balanceDB.table('balance')
+Balance = Query()
+
+def signup(username, email, password, balance, currency):
+    if users.search(User.username == username) or balance < 0:
         return False
-    users.insert({'username': username, 'password': password})
+    users.insert({'username': username, 'email': email, 'password': password})
+    balances.insert({'username': username, 'balance': balance, "currency": currency})
     return True
 
 def login(username, password):
@@ -150,9 +241,11 @@ async def getUserCreds(
     request: Request,
     username: str = Form(...),
     email: str = Form(...),
-    password: str = Form(...)
+    password: str = Form(...),
+    balance: float = Form(...),
+    baseCurrency: str = Form(...)
 ):
-    response = signup(username, password)
+    response = signup(username, email, password, balance, baseCurrency)
     if response:
         data = {"username": username,"email": email,"password": password}
         print("New user added! Welcome", username)
@@ -163,12 +256,20 @@ async def getUserCreds(
         return RedirectResponse(url="/currencyLogin", status_code=303)
 
     else:
-        print("Username already taken")
+        if balance < 0:
+            print("Balance cannot be less than 0")
+        else:
+            print("Username already taken")
         return templates.TemplateResponse("currency_error.html", {"request": request})
 
 @app.get("/currencyLogin", response_class=HTMLResponse)
 async def getCurrencyPage(request: Request):
     return templates.TemplateResponse("currency_login.html", {"request": request})
+
+
+
+
+
 
 @app.post("/currencyLogin", response_class=HTMLResponse)
 async def loginUser(
@@ -183,9 +284,21 @@ async def loginUser(
         data = {"newUser": username}
         print("User Logged In, Welcome", username,"!")
         
+        user_data = users.get(User.username == username)
+        financial_data =  balances.get(Balance.username == username)
+        del financial_data['username']
+        
+        
+        merged_data = {**user_data, **financial_data}
+        
+        producer.send(TOPIC_2, json.dumps(merged_data).encode())
         producer.send(TOPIC, json.dumps(data).encode())
+        
+
         global userLoggedIn
         userLoggedIn = username
+        global userInfo
+        userInfo = merged_data
         
         return RedirectResponse(url="/home",status_code=303)
     else:

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Conversion Rates</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    
+</head>
+<body>
+
+    <h1>Username: {{username}}</h1>
+    <h1>Email: {{email}}</h1>
+    <h1>Password: {{password}}</h1>
+    <h1>Balance: {{balance | round(2)}}</h1>
+    <h1>Currency: {{currency}}</h1>
+
+    {% if notification %}
+        <script>
+            alert("{{ notification }}");
+        </script>
+    {% endif %}
+
+    <h1>Send money to other Users</h1>
+    <form method="POST" action="/viewProfile" onsubmit="return confirmSubmit();">
+        {% if message %}
+            <p style="color: green;">{{ message }}</p>
+        {% endif %}
+        <label for="userSent">Enter user you want to send money to:</label>
+        <input type="text" id="userSent" name="userSent" required>
+        <br><br>
+        <label for="sent-amount">Enter amount:</label>
+        <input type="text" id="sent-amount" name="sentAmount" required>
+       
+        <button  class="btn" type="submit" >Submit</button>
+    </form>
+    <script>
+        function confirmSubmit() {
+            alert("Money Successfully Transfered");  
+            return true; 
+        }
+    </script>
+</body>
+</html>

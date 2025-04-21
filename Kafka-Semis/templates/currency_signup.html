@@ -54,9 +54,55 @@
         <input type="text" name="username" placeholder="Username" required />
         <input type="email" name="email" placeholder="Email" required />
         <input type="password" name="password" placeholder="Password" required />
+        <input type="text" name="balance" placeholder="Balance" required />
+        <label for="baseCurrency">Base Currency</label>
+        <select name="baseCurrency" id="base-currency">
+            <option value="">Loading Currencies</option>
+        </select>
         <button type="submit" class="btn">Sign Up</button>
         <a href="/currencyLogin">Already have an account?  <span style="color: blue;">Log In</span></a>
     </form>
 
+    <script>
+        async function fetchConversionRates(baseCurrency) {
+            const apiUrl = `https://v6.exchangerate-api.com/v6/9182c69d6189cb61ba450f03/latest/${baseCurrency}`;
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                
+                if (data.result === "success") {
+                    const rates = data.conversion_rates;
+
+                    const dropdown = document.getElementById('base-currency');
+                    if (dropdown && dropdown.options.length <= 1) {
+                        dropdown.innerHTML = ''; // Clear existing
+                        for (const currency in rates) {
+                            const option = document.createElement('option');
+                            option.value = currency;
+                            option.textContent = currency;
+                            if (currency === baseCurrency) {
+                                option.selected = true;
+                            }
+                            dropdown.appendChild(option);
+                        }
+                    }
+
+
+                } else {
+                    alert('Error fetching data: ' + data.result);
+                }
+            } catch (error){
+                console.error('Error fetching conversion data:', error);
+            }
+
+            
+            }
+
+    fetchConversionRates("USD")
+    
+    
+    
+    </script>
+    
 </body>
 </html>

@@ -27,6 +27,7 @@ for message in consumer:
     sTarget = currency_data.get("sTargetCurrency")
     amount = currency_data.get("amount")
 
+
     if user:
         print(user,"requests to view exchange rates with the base currency of", base)
     elif amount:
